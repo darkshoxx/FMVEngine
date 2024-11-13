@@ -5,24 +5,43 @@ from PIL.ImageTk import PhotoImage
 
 # files
 import os
-from typing import List
+from typing import Dict, List
 HERE = os.path.abspath(os.path.dirname(__file__))
 IMAGE_FOLDER = os.path.join(HERE, "Images")
-DEFAULT_IMAGE = os.path.join(IMAGE_FOLDER, "default.png")
+SCENES_FOLDER = os.path.join(IMAGE_FOLDER, "Scenes")
+DEFAULT_IMAGE = os.path.join(SCENES_FOLDER, "default.png")
 IMAGE_WIDTH = 800
 IMAGE_HEIGHT = 600
 
-def load_images(directory:str = IMAGE_FOLDER)->List[PhotoImage]:
-    image_list = []
-    for (dir_path, dir_names, file_names) in os.walk(directory):
+# GAME DATA
+TOTAL_INVENTORY = ["Rope", "Bottle", "Newspaper", "Book", "Coins"]
+CURRENT_INVENTORY = ["Rope", "Bottle"]
+SCENES = ["Boxing", "Hallway", "HallwayWest", "Office"]
+ACTIVE_SCENE = "default"
+current_image: PhotoImage 
+
+def load_scenes(directory:str = SCENES_FOLDER)->Dict[str, PhotoImage]:
+    image_dict = {}
+    for (dir_path, _, file_names) in os.walk(directory):
+        print((dir_path, _, file_names))
         for file in file_names:
+            name, _ = file.split(".")
             current_image = Image.open(os.path.join(dir_path, file))
             current_image = current_image.resize((IMAGE_WIDTH, IMAGE_HEIGHT))
-            image_list.append(current_image)
-    return image_list
+            image_dict[name] = (current_image)
+    return image_dict
+
+def on_select(event):
+    widget = event.widget
+    index = int(widget.curselection()[0])
+    value = widget.get(index)
+    print(f" Scene number {index} was selected and is called {value}")
+    global ACTIVE_SCENE
+    ACTIVE_SCENE = value
+
 
 def draw_scene_list(parent:Frame)-> Frame:
-    default_scenes = ["Boxing", "Hallway", "HallwayWest", "Office"]
+    default_scenes = load_scenes()
     scenes_frame = Frame(parent, name="scene_frame", height=100, width=120)
     scene_box = Listbox(scenes_frame, height=4, width=60)
     for item in default_scenes:
@@ -32,6 +51,7 @@ def draw_scene_list(parent:Frame)-> Frame:
     scene_scrollbar.grid(row=0, column=1, sticky=W, pady=2)
     scene_box.config(yscrollcommand =scene_scrollbar.set)
     scene_scrollbar.config(command=scene_box.yview)
+    scene_box.bind('<<ListboxSelect>>', on_select)
     return scenes_frame
 
 
@@ -42,7 +62,7 @@ def draw_main_window(edit_mode:bool = True):
 
     root_edit = Tk()
     root_edit.resizable(False, False)
-    IMAGES_LIST = [PhotoImage(file=DEFAULT_IMAGE)] 
+    IMAGES_DICT = load_scenes()
     play_frame = Frame(root_edit, height=IMAGE_WIDTH, width=IMAGE_HEIGHT+100)
     if edit_mode:
         root_edit.title("Edit Window")
@@ -54,7 +74,7 @@ def draw_main_window(edit_mode:bool = True):
         play_frame.grid(row=0, column=0) 
 
 
-    play_window = draw_play_window(parent=play_frame, image_list=IMAGES_LIST)
+    play_window = draw_play_window(parent=play_frame, image_dict=IMAGES_DICT)
 
     play_window.grid(row=0, column=0, sticky=SE, pady=2)
 
@@ -91,7 +111,7 @@ def draw_main_window(edit_mode:bool = True):
 
 
 
-def draw_play_window(parent: Frame = None, image_list: List = None) -> Frame:
+def draw_play_window(parent: Frame = None, image_dict: Dict[str, PhotoImage] = None) -> Frame:
     # relabel for convenience
     root_play = parent
 
@@ -99,7 +119,9 @@ def draw_play_window(parent: Frame = None, image_list: List = None) -> Frame:
     play_frame = Frame(root_play, width=800, height=700)
     play_frame.grid(row=0, column=0)
     # get current image  TODO
-    current_image = image_list[0]
+    global ACTIVE_SCENE
+    global current_image
+    current_image = PhotoImage(image_dict[ACTIVE_SCENE], master = parent)
     image_label = Label(play_frame, image=current_image)
 
     # define buttons
@@ -119,7 +141,7 @@ def draw_play_window(parent: Frame = None, image_list: List = None) -> Frame:
     button_list[5].grid(row=1, column=2, pady=button_pad_y, padx=button_pad_x)
     
     # define inventory box
-    default_inventory_items = ["Rope", "Bottle", "Newspaper", "Book", "Coins"]
+    default_inventory_items = CURRENT_INVENTORY
     inventory_frame = Frame(play_frame, name="inventory_frame", height=100, width=120)
     inventory_box = Listbox(inventory_frame, height=4, width=60)
     for item in default_inventory_items:
@@ -139,6 +161,6 @@ def draw_play_window(parent: Frame = None, image_list: List = None) -> Frame:
 
 
 if __name__ == "__main__":
-    load_images()
+    load_scenes()
     draw_main_window(edit_mode=True)
 
